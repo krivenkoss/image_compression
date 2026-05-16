@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Output folder (keep .gitkeep)
+output/*
+!output/.gitkeep
+
+# Raw / codec temp files
+*.raw
+*.cod
+*.out
+lastps.*
+
+# Proprietary codec binaries (public repo: users obtain these themselves)
+coders/*.exe
+coders/*.EXE
+coders/*.dll
+coders/*.DLL
+!coders/.gitkeep
+!coders/README.md
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Krivenko
+prompts/
+legacy/

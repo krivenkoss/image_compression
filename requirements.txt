@@ -1,0 +1,15 @@
+numpy
+pandas
+opencv-python
+pillow
+pillow_heif
+scikit-image
+sewar
+psnr_hvsm
+piq
+torch
+matplotlib
+seaborn
+tqdm
+openpyxl
+scipy

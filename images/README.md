@@ -1,0 +1,1 @@
+Drop test images here.
