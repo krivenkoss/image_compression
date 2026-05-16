@@ -83,10 +83,13 @@ def gaussian(
     mean_norm = mean / 255.0
 
     def _add(ch: np.ndarray) -> np.ndarray:
+        # scikit-image >= 0.21 replaced `seed=` with `rng=`. Pass the seed as
+        # `rng=`; an int is interpreted by NumPy as a PCG64 seed, which keeps
+        # the behaviour identical to the old `seed=` argument.
         noisy = random_noise(
             img_as_float(ch),
             mode="gaussian",
-            seed=seed,
+            rng=seed,
             mean=mean_norm,
             var=std_norm ** 2,
         )
@@ -172,7 +175,11 @@ def speckle(
     True
     """
     def _add(ch: np.ndarray) -> np.ndarray:
-        noisy = random_noise(img_as_float(ch), mode="speckle", seed=seed, var=std ** 2)
+        # See note in `gaussian`: `seed=` was renamed to `rng=` in newer
+        # scikit-image versions; an int is accepted as a seed.
+        noisy = random_noise(
+            img_as_float(ch), mode="speckle", rng=seed, var=std ** 2
+        )
         return img_as_ubyte(noisy)
 
     return _apply_per_channel(image, _add, per_channel)
