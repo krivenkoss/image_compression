@@ -6,6 +6,7 @@ returns a uint8 array of the same shape. Intensity range is always clipped to
 """
 from __future__ import annotations
 
+import inspect
 import logging
 from collections.abc import Callable
 
@@ -14,6 +15,14 @@ from skimage import img_as_float, img_as_ubyte
 from skimage.util import random_noise
 
 logger = logging.getLogger(__name__)
+
+
+# scikit-image renamed the random-seed argument of ``random_noise`` from
+# ``seed`` to ``rng`` in version 0.21. Detect the correct keyword once at
+# import time so this module works against both APIs.
+_RANDOM_NOISE_SEED_KW = (
+    "rng" if "rng" in inspect.signature(random_noise).parameters else "seed"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -83,16 +92,14 @@ def gaussian(
     mean_norm = mean / 255.0
 
     def _add(ch: np.ndarray) -> np.ndarray:
-        # scikit-image >= 0.21 replaced `seed=` with `rng=`. Pass the seed as
-        # `rng=`; an int is interpreted by NumPy as a PCG64 seed, which keeps
-        # the behaviour identical to the old `seed=` argument.
-        noisy = random_noise(
-            img_as_float(ch),
-            mode="gaussian",
-            rng=seed,
-            mean=mean_norm,
-            var=std_norm ** 2,
-        )
+        # Use whichever seed keyword the installed scikit-image expects
+        # (``seed`` pre-0.21, ``rng`` since 0.21). Detected at import time.
+        kwargs = {
+            _RANDOM_NOISE_SEED_KW: seed,
+            "mean": mean_norm,
+            "var": std_norm ** 2,
+        }
+        noisy = random_noise(img_as_float(ch), mode="gaussian", **kwargs)
         return img_as_ubyte(noisy)
 
     return _apply_per_channel(image, _add, per_channel)
@@ -175,11 +182,11 @@ def speckle(
     True
     """
     def _add(ch: np.ndarray) -> np.ndarray:
-        # See note in `gaussian`: `seed=` was renamed to `rng=` in newer
-        # scikit-image versions; an int is accepted as a seed.
-        noisy = random_noise(
-            img_as_float(ch), mode="speckle", rng=seed, var=std ** 2
-        )
+        # See note in `gaussian`: seed keyword name differs across
+        # scikit-image versions. ``_RANDOM_NOISE_SEED_KW`` is chosen once
+        # at import time.
+        kwargs = {_RANDOM_NOISE_SEED_KW: seed, "var": std ** 2}
+        noisy = random_noise(img_as_float(ch), mode="speckle", **kwargs)
         return img_as_ubyte(noisy)
 
     return _apply_per_channel(image, _add, per_channel)
