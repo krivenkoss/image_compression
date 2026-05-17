@@ -34,6 +34,7 @@ METRIC_LABELS: dict[str, str] = {
     "mdsi":       "MDSI",
     "gmsd":       "GMSD",
     "cr":         "Compression ratio",
+    "log_cr":     "log₁₀(CR)",   # rendered: log₁₀(CR)
 }
 
 
@@ -72,6 +73,7 @@ def plot_rd(
     xmax: float | None = None,
     ymin: float | None = None,
     ymax: float | None = None,
+    title: str | None = None,
 ) -> Path:
     """Plot rate-distortion curves (one line per coder).
 
@@ -115,7 +117,10 @@ def plot_rd(
         ax.plot(sub_sorted[x], sub_sorted[y], marker=".", label=coder)
     ax.set_xlabel(axis_label(x))
     ax.set_ylabel(axis_label(y))
-    ax.set_title(f"{axis_label(y)} vs {axis_label(x)}")
+    if title:
+        ax.set_title(title)
+    else:
+        ax.set_title(f"{axis_label(y)} vs {axis_label(x)}")
     if logx:
         ax.set_xscale("log")
     if xmin is not None or xmax is not None:

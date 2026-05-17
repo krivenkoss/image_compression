@@ -50,6 +50,7 @@ def test_axis_label_db_units():
     assert axis_label("psnr_hvs_m") == "PSNR-HVS-M, dB"
     assert axis_label("ssim") == "SSIM"
     assert axis_label("cr") == "Compression ratio"
+    assert axis_label("log_cr") == "log₁₀(CR)"
 
 
 def test_axis_label_fallback():

@@ -11,6 +11,8 @@ build/
 venv/
 env/
 
+*.bat
+
 # VS Code
 .vscode/
 *.code-workspace

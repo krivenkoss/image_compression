@@ -1,11 +1,20 @@
 """Study 02 — compare with original image.
 
-Replicates the legacy ``Main OOP cycle (compare with original image)`` block
-from oop.py.  The noised image is fed to the coder, but the quality of the
-decoded image is measured against the ORIGINAL (clean) image — not against
-the noised one.  This is the lossy-compression + denoising scenario: a
-coder that smooths some of the noise away can score better here than in
-study 01.
+Refined version analysing three classic grayscale standards of
+increasing spatial complexity (Lena, Goldhill, Baboon) against
+the original clean reference. Sweeps Gaussian noise variances
+0, 25, 49, 100, 196 (std = 0, 5, 7, 10, 14) and the full coder
+set JPEG / ADCT / BPG / HEIF / AVIF. Metrics: PSNR (for
+comparison with classical results) and HaarPSI (for modern
+perceptual comparison). Produces rate-distortion curves on
+BOTH a linear CR axis and a log10(CR) axis — the log view
+makes the parameter region where modern coders outperform
+JPEG visible.
+
+std = 0 means the original clean image is fed directly to the
+coder (noise call is skipped to avoid spurious rounding artefacts).
+Filenames are resolved case-insensitively from images/; if Lena.bmp
+is absent, Peppers.bmp is used as a documented fallback.
 
 Edit the matching INI for parameter changes — do not hard-code values here.
 
@@ -14,11 +23,12 @@ Usage::
     python -m studies.study_02_compare_with_original
     python -m studies.study_02_compare_with_original \\
            --config configs/study_02_compare_with_original.ini \\
-           --set noise.std_values=5,10,14 --set coders.list=JPEG,BPG
+           --set noise.std_values=0,10 --set coders.list=JPEG,BPG
 """
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from pathlib import Path
 
@@ -27,7 +37,6 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-# Flat import from project root (run as: python -m studies.study_02_...)
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config_loader import load_ini, informative_filename
 from noise import apply_noise
@@ -50,6 +59,16 @@ def noise_extras(cfg: dict, kind: str) -> dict:
     if kind == "correlated_gaussian":
         return {"kernel": n["kernel"], "radius": n["radius"]}
     return {}
+
+
+def _resolve_image(name: str, images_dir: Path) -> Path | None:
+    """Return the actual on-disk path for *name* (case-insensitive),
+    or None if no match exists."""
+    target = name.lower()
+    for p in images_dir.iterdir():
+        if p.is_file() and p.name.lower() == target:
+            return p
+    return None
 
 
 def main() -> None:
@@ -76,12 +95,25 @@ def main() -> None:
             f"[WARNING] Study 02 forces reference='original' but INI has "
             f"reference='{cfg['study']['reference']}'. Overriding to 'original'."
         )
-    reference = "original"
+    reference = "original"  # noqa: F841 — documents intent; metric loop uses `image` directly
 
     rng_seed = cfg["study"]["random_seed"]
     images_dir = Path(cfg["paths"]["images_dir"])
     out_dir = Path(cfg["paths"]["output_dir"]) / cfg["study"]["name"]
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Resolve requested filenames case-insensitively; Lena → Peppers fallback.
+    resolved: list[Path] = []
+    for i, name in enumerate(cfg["images"]["filenames"]):
+        p = _resolve_image(name, images_dir)
+        if p is None and i == 0 and name.lower() == "lena.bmp":
+            p = _resolve_image("Peppers.bmp", images_dir)
+            if p:
+                print(f"[INFO] Lena.bmp not found, using {p.name} as fallback.")
+        if p is None:
+            print(f"[WARNING] Image not found, skipping: {name}")
+            continue
+        resolved.append(p)
 
     rows: list[dict] = []
 
@@ -91,26 +123,25 @@ def main() -> None:
             cfg["coder_ranges"][coder]["stop"],
             cfg["coder_ranges"][coder]["step"],
         )
-        for image_name in cfg["images"]["filenames"]:
-            image_path = images_dir / image_name
-            if not image_path.exists():
-                print(f"[WARNING] Image not found, skipping: {image_path}")
-                continue
+        for image_path in resolved:
             image = cv2.imread(str(image_path), 0)
             for noise_kind in cfg["noise"]["kinds"]:
                 for std in cfg["noise"]["std_values"]:
-                    noised = apply_noise(
-                        image,
-                        noise_kind,
-                        std=std,
-                        seed=rng_seed,
-                        **noise_extras(cfg, noise_kind),
-                    )
-                    # Reference is the ORIGINAL clean image (the point of study 02).
+                    if std == 0:
+                        noised = image
+                    else:
+                        noised = apply_noise(
+                            image,
+                            noise_kind,
+                            std=std,
+                            seed=rng_seed,
+                            **noise_extras(cfg, noise_kind),
+                        )
+                    # Reference is always the ORIGINAL clean image (study 02).
                     ref = image
                     for p in tqdm(
                         cr_range,
-                        desc=f"{coder} | {image_name} | std={std}",
+                        desc=f"{coder} | {image_path.name} | std={std}",
                     ):
                         try:
                             decoded, cr = compress(noised, coder, p)
@@ -120,12 +151,14 @@ def main() -> None:
                         m = compute_metrics(ref, decoded, cfg["metrics"]["list"])
                         rows.append(
                             {
-                                "image": image_name,
+                                "image": image_path.name,
                                 "coder": coder,
                                 "noise_kind": noise_kind,
                                 "std": std,
+                                "variance": std * std,
                                 "pcc": float(p),
                                 "cr": cr,
+                                "log_cr": math.log10(cr) if cr > 0 else float("nan"),
                                 **m,
                             }
                         )
@@ -143,7 +176,7 @@ def main() -> None:
     std_tag = "-".join(map(str, cfg["noise"]["std_values"]))
     base = informative_filename(
         cfg["study"]["name"],
-        "+".join(cfg["images"]["filenames"]),
+        "+".join(p.name for p in resolved),
         cfg["coders"]["list"],
         kind_tag,
         std_tag,
@@ -166,23 +199,48 @@ def main() -> None:
         print(f"XLSX: {xlsx_path}")
 
     if cfg["output"]["write_plots"]:
-        # Prefer psnr_hvs_m; fall back to the first available metric column.
-        preferred = "psnr_hvs_m"
-        metric_cols = cfg["metrics"]["list"]
-        y_col = preferred if preferred in metric_cols else metric_cols[0]
-        plot_path = base.with_name(base.name + f"__rd_{y_col}.png")
-        plot_rd(
-            df,
-            x="cr",
-            y=y_col,
-            out_path=plot_path,
-            dpi=cfg["output"]["plot_dpi"],
-            xmin=cfg["output"].get("plot_xmin"),
-            xmax=cfg["output"].get("plot_xmax"),
-            ymin=cfg["output"].get("plot_ymin"),
-            ymax=cfg["output"].get("plot_ymax"),
-        )
-        print(f"Plot: {plot_path}")
+        plot_axes = [
+            ("cr",     "psnr"),
+            ("log_cr", "psnr"),
+            ("cr",     "haar_psi"),
+            ("log_cr", "haar_psi"),
+        ]
+
+        # Discover cells from the data, not from the config — robust to
+        # missing images, --set overrides, and failed compressions.
+        images_in_df = list(df["image"].unique())
+        stds_in_df = sorted(df["std"].unique())
+
+        for image_name in images_in_df:
+            img_stem = Path(image_name).stem
+            for std in stds_in_df:
+                sub = df[(df["image"] == image_name) & (df["std"] == std)]
+                if sub.empty:
+                    continue
+                var_val = int(std * std)
+                title_base = f"{img_stem}  σ²={var_val} (σ={std})"
+                for x_col, y_col in plot_axes:
+                    if x_col not in sub.columns or y_col not in sub.columns:
+                        continue
+                    is_log = x_col == "log_cr"
+                    plot_path = out_dir / (
+                        f"{cfg['study']['name']}"
+                        f"__{img_stem}__std{std}"
+                        f"__rd_{x_col}_vs_{y_col}.png"
+                    )
+                    plot_rd(
+                        sub,
+                        x=x_col,
+                        y=y_col,
+                        out_path=plot_path,
+                        dpi=cfg["output"]["plot_dpi"],
+                        xmin=None if is_log else cfg["output"].get("plot_xmin"),
+                        xmax=None if is_log else cfg["output"].get("plot_xmax"),
+                        ymin=cfg["output"].get("plot_ymin"),
+                        ymax=cfg["output"].get("plot_ymax"),
+                        title=title_base,
+                    )
+                    print(f"Plot: {plot_path.name}")
 
     print(f"Done. Results in: {out_dir}")
 
