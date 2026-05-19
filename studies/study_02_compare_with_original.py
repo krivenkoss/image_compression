@@ -172,6 +172,14 @@ def main() -> None:
 
     df = pd.DataFrame(rows)
 
+    from anomalies import drop_coder_anomalies
+    df_before = len(df)
+    df = drop_coder_anomalies(df)
+    n_dropped = df_before - len(df)
+    if n_dropped:
+        print(f"[anomalies] dropped {n_dropped} anomalous rows "
+              f"from AGU/AGUm/ADCT/ADCTm")
+
     kind_tag = "-".join(cfg["noise"]["kinds"])
     std_tag = "-".join(map(str, cfg["noise"]["std_values"]))
     base = informative_filename(
