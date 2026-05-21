@@ -6,6 +6,8 @@ A lossy image compression research framework for benchmarking codec performance 
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![tests](https://github.com/krivenkoss/image_compression/actions/workflows/ci.yml/badge.svg)
 
+**S. S. Kryvenko** · [Department of Information and Communication Technologies](https://dict.khai.edu/), National Aerospace University «Kharkiv Aviation Institute»
+
 ---
 
 ## What it is
@@ -56,7 +58,7 @@ the INI.
 ```
 image_compression/
 ├── README.md
-├── LICENSE                              MIT, 2026, Krivenko S.S.
+├── LICENSE                              MIT, 2026, Kryvenko S.S.
 ├── CITATION.cff                         Academic citation metadata
 ├── .gitignore
 ├── pytest.ini                           pytest configuration
@@ -428,13 +430,15 @@ skipped automatically when the binaries are not present.
 ## Citation
 
 ```bibtex
-@software{krivenko2026imagecompression,
-  author  = {Krivenko, S. S.},
-  title   = {image\_compression: a lossy image compression research framework},
-  year    = {2026},
-  version = {0.1.0},
-  license = {MIT},
-  url     = {https://github.com/krivenkoss/image_compression}
+@software{kryvenko2026imagecompression,
+  author      = {Kryvenko, S. S.},
+  title       = {image\_compression: a lossy image compression research framework},
+  year        = {2026},
+  version     = {0.1.0},
+  license     = {MIT},
+  url         = {https://github.com/krivenkoss/image_compression},
+  institution = {National Aerospace University, Department of Information and Communication Technologies},
+  note        = {\url{https://dict.khai.edu/}}
 }
 ```
 

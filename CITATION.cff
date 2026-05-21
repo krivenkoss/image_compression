@@ -4,6 +4,8 @@ title: "image_compression: a lossy image compression research framework"
 authors:
   - family-names: "Kryvenko"
     given-names: "S. S."
+    affiliation: "National Aerospace University, Department of Information and Communication Technologies"
+    website: "https://dict.khai.edu/"
 version: "0.1.0"
 date-released: "2026-05-16"
 license: MIT
