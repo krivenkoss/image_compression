@@ -17,9 +17,14 @@ env/
 .vscode/
 *.code-workspace
 
-# Output folder (keep .gitkeep)
-output/*
+# Output folder - track result files only
+output/**
+!output/**/
 !output/.gitkeep
+!output/**/*.png
+!output/**/*.csv
+!output/**/*.xls
+!output/**/*.xlsx
 
 # Raw / codec temp files
 *.raw
