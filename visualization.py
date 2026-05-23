@@ -14,6 +14,8 @@ import seaborn as sns
 
 logger = logging.getLogger(__name__)
 
+plt.rcParams.update({"font.size": 20})
+
 _DEFAULT_OUT = Path("output")
 
 # Metrics expressed in decibels — axis labels get a ", dB" suffix.
@@ -237,7 +239,7 @@ def plot_image_grid(
     for ax, (label, arr) in zip(axes, images.items()):
         display = arr if arr.ndim == 2 else arr[:, :, ::-1]  # BGR -> RGB
         ax.imshow(display, cmap="gray" if arr.ndim == 2 else None)
-        ax.set_title(label, fontsize=9)
+        ax.set_title(label, fontsize=18)
         ax.axis("off")
     fig.tight_layout()
     fig.savefig(out_path, dpi=dpi)
